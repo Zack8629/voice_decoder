@@ -7,8 +7,23 @@
 /whisper_models/medium.pt
 /whisper_models/small.pt
 
-# Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,python,pycharm+all,venv
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,python,pycharm+all,venv
+# Created by https://www.toptal.com/developers/gitignore/api/venv,linux,macos,python,windows,pycharm+all,git
+# Edit at https://www.toptal.com/developers/gitignore?templates=venv,linux,macos,python,windows,pycharm+all,git
+
+### Git ###
+# Created by git for backups. To disable backups in Git:
+# $ git config --global mergetool.keepBackup false
+*.orig
+
+# Created by git when using merge tools for conflicts
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+*_BACKUP_*.txt
+*_BASE_*.txt
+*_LOCAL_*.txt
+*_REMOTE_*.txt
 
 ### Linux ###
 *~
@@ -356,4 +371,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/windows,linux,macos,python,pycharm+all,venv
+# End of https://www.toptal.com/developers/gitignore/api/venv,linux,macos,python,windows,pycharm+all,git
