@@ -1,0 +1,8 @@
+/build/
+/dist/
+/.venv/
+/test_materials/
+/ffmpeg/ffmpeg.exe
+/whisper_models/large-v3.pt
+/whisper_models/medium.pt
+/whisper_models/small.pt
