@@ -5,20 +5,22 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QTex
 
 from . import APP_VERSION, ICON_PATH
 from .processor import transcribe, get_best_device
+from .time_estimator import estimate_transcription_time
 
 
 class TranscriptionThread(QThread):
     progress = pyqtSignal(int)
     result = pyqtSignal(str)
 
-    def __init__(self, file_path, model_name):
+    def __init__(self, file_path, model_name, save_converted):
         super().__init__()
         self.file_path = file_path
         self.model_name = model_name
+        self.save_converted = save_converted
 
     def run(self):
         try:
-            text = transcribe(self.file_path, self.model_name, self.progress.emit)
+            text = transcribe(self.file_path, self.model_name, self.progress.emit, self.save_converted)
             self.result.emit(text)
         except Exception as e:
             print(f'Error run => {e}')
@@ -45,6 +47,10 @@ class WhisperApp(QWidget):
         self.check_hardware_action.triggered.connect(self.check_hardware)
         file_menu.addAction(self.check_hardware_action)
 
+        self.time_estimate_action = QAction('Примерное время обработки файла', self)
+        self.time_estimate_action.triggered.connect(self.check_estimate)
+        file_menu.addAction(self.time_estimate_action)
+
         exit_action = QAction('Выход', self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
@@ -65,8 +71,7 @@ class WhisperApp(QWidget):
         self.file_path_display.setReadOnly(True)
 
         self.save_checkbox = QCheckBox('Сохранить конвертированный файл')
-        self.save_checkbox.setEnabled(False)
-        self.save_checkbox.setChecked(True)
+        self.save_checkbox.setChecked(False)
         self.save_checkbox.setStyleSheet("QCheckBox { text-align: right; }")
 
         file_layout.addWidget(self.btn_select)
@@ -86,7 +91,7 @@ class WhisperApp(QWidget):
         speed_layout.addWidget(self.quality_label)
         main_layout.addLayout(speed_layout)
 
-        # Ползунок выбора модели ААААА
+        # Ползунок выбора модели
         self.slider_model = QSlider(Qt.Orientation.Horizontal)
         self.slider_model.setMinimum(0)
         self.slider_model.setMaximum(2)
@@ -148,7 +153,11 @@ class WhisperApp(QWidget):
         self.model_names = ['small', 'medium', 'large-v3']
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Выбрать файл', '', 'Audio/Video Files (*.mp3 *.wav *.mp4)')
+        filters = 'Video Files (*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.webm);;' \
+                  'Audio Files (*.mp3 *.wav *.flac *.aac *.ogg *.m4a *.wma *.aiff *.aif)'
+
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Выбрать файл', '', filters)
+
         if file_path:
             self.file_path = file_path
             self.file_path_display.setText(file_path)
@@ -157,23 +166,40 @@ class WhisperApp(QWidget):
         device = get_best_device()
         QMessageBox.information(self, 'Определение железа', f'Для работы программы будет использоваться {device}')
 
-    def transcribe_file(self):
+    def check_estimate(self):
+        """Оценивает примерное время обработки файла."""
         if not self.file_path:
-            QMessageBox.warning(self, 'Ошибка', 'Выберите файл для расшифровки!')
+            QMessageBox.warning(self, 'Ошибка', 'Выберите файл перед расчетом времени!')
             return
 
-        self.progress_bar.setValue(0)
-        self.text_output.setText('')
+        model_name = self.model_names[self.slider_model.value()]  # Выбранная модель
+        msg_estimate = estimate_transcription_time(self.file_path, model_name)
+        QMessageBox.information(self, 'Время обработки файла', msg_estimate)
 
-        self.btn_select.setEnabled(False)
-        self.slider_model.setEnabled(False)
-        self.btn_transcribe.setEnabled(False)
+    def transcribe_file(self):
+        try:
+            if not self.file_path:
+                QMessageBox.warning(self, 'Ошибка', 'Выберите файл для расшифровки!')
+                return
 
-        model_name = self.model_names[self.slider_model.value()]
-        self.transcription_thread = TranscriptionThread(self.file_path, model_name)
-        self.transcription_thread.progress.connect(self.update_progress)
-        self.transcription_thread.result.connect(self.display_result)
-        self.transcription_thread.start()
+            self.progress_bar.setValue(0)
+            self.text_output.setText('')
+
+            self.btn_select.setEnabled(False)
+            self.slider_model.setEnabled(False)
+            self.save_checkbox.setEnabled(False)
+            self.btn_transcribe.setEnabled(False)
+
+            model_name = self.model_names[self.slider_model.value()]
+            save_converted = self.save_checkbox.isChecked()  # Получаем состояние галки
+
+            # Передаём save_converted в поток обработки
+            self.transcription_thread = TranscriptionThread(self.file_path, model_name, save_converted)
+            self.transcription_thread.progress.connect(self.update_progress)
+            self.transcription_thread.result.connect(self.display_result)
+            self.transcription_thread.start()
+        except Exception as e:
+            print(f'Error transcribe_file => {e}')
 
     def update_progress(self, target_value):
         """Плавное обновление прогресса."""
@@ -227,6 +253,7 @@ class WhisperApp(QWidget):
 
         self.btn_select.setEnabled(True)
         self.slider_model.setEnabled(True)
+        self.save_checkbox.setEnabled(True)
         self.btn_transcribe.setEnabled(True)
 
     def show_about(self):

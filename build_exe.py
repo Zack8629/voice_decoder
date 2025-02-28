@@ -3,14 +3,22 @@ import time
 
 from app import APP_VERSION
 
+DEBUG = False
+
+if DEBUG:
+    name_exe = f'voice_decoder_{APP_VERSION} DEBUG'
+    pyinstaller_console = 'pyinstaller '
+else:
+    name_exe = f'voice_decoder_{APP_VERSION}'
+    pyinstaller_console = 'pyinstaller --noconsole '
+
 try:
     name_exe = f'voice_decoder_{APP_VERSION}'
     whisper_assets = os.path.normpath('.venv/Lib/site-packages/whisper/assets')
 
     # Команда для PyInstaller
     command = (
-        # f'pyinstaller --noconsole '
-        f'pyinstaller '
+        f'{pyinstaller_console}'
         f'--icon=app/main.ico '
         f'--name="{name_exe}" '
         f'--add-data "app/main.ico;app/" '
