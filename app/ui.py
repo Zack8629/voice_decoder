@@ -248,7 +248,6 @@ class WhisperApp(QWidget):
 
     def display_result(self, text):
         """Выводит результат и завершает процесс."""
-        self.update_progress(100)
         self.text_output.setText(text)
 
         self.btn_select.setEnabled(True)

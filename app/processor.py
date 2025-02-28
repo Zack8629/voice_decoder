@@ -5,31 +5,34 @@ from pathlib import Path
 import torch
 import whisper
 
-from app import BASE_DIR, FFMPEG_PATH, WHISPER_MODELS_DIR
+from app import FFMPEG_PATH, WHISPER_MODELS_DIR
 
 
-def convert_to_wav(video_path):
-    """Конвертирует видео в аудиофайл (WAV) и возвращает путь к нему."""
+def convert_to_wav(input_path):
+    """Конвертирует аудио- или видеофайл в WAV (PCM 16-bit, 16kHz, mono)"""
     try:
-        video_path = Path(video_path)
-        audio_path = video_path.parent / f'convert_file_{video_path.stem}.wav'  # Создание рядом с видео
-
-        ffmpeg_path = FFMPEG_PATH
+        input_path = Path(input_path)
+        output_path = input_path.parent / f'convert_file_{input_path.stem}.wav'
 
         command = [
-            ffmpeg_path, '-i', video_path, '-ac', '1', '-ar', '16000', '-y', str(audio_path)
+            str(FFMPEG_PATH), '-i', str(input_path),
+            '-ac', '1', '-ar', '16000', '-acodec', 'pcm_s16le',
+            '-threads', '0',
+            '-y', str(output_path)
         ]
 
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        print(f'[DEBUG] Запуск FFmpeg: {" ".join(command)}')
 
-        return str(audio_path)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if not os.path.exists(output_path):
+            print(f'FFmpeg ошибка: {result.stderr}')
+            raise FileNotFoundError(f'FFmpeg не создал файл: {output_path}')
+
+        return str(output_path)
 
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f'Ошибка при конвертации видео: {e}')
-
-    except Exception as e:
-        print(f'Error convert_video_to_audio => {e}')
-        return 'convert_video_to_audio'
+        raise RuntimeError(f'Ошибка при конвертации файла {input_path}: {e}')
 
 
 def get_best_device():
@@ -37,12 +40,16 @@ def get_best_device():
     try:
         if torch.cuda.is_available():
             return 'cuda'
-        elif torch.backends.mps.is_available():  # Для Apple M1/M2
+        elif torch.backends.mps.is_available():  # Apple M1/M2
             return 'mps'
         else:
+            if torch.cuda.device_count() > 0:
+                print('[WARNING] Whisper работает на CPU, хотя GPU доступен! Возможно, не установлены драйверы.')
+                return 'cpu (GPU доступен, но не используется!)'
             return 'cpu'
+
     except Exception as e:
-        print(f'Error get_best_device => {e}')
+        print(f'[WARNING] Ошибка при определении устройства: {e}')
         return 'cpu'
 
 
@@ -61,23 +68,23 @@ def format_time(seconds):
 def transcribe(file_path, model_size='small', progress_callback=None, save_converted=True):
     try:
         file_ext = Path(file_path).suffix.lower()
-        temp_file = False  # Флаг временного файла
+        temp_file = False
 
         if file_ext in ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a']:
             audio_path = file_path
         else:
             audio_path = convert_to_wav(file_path)
-            temp_file = True  # Это временный файл
+            temp_file = True
 
         if progress_callback:
-            progress_callback(25)  # Конвертация завершена
+            progress_callback(25)
 
-        # Добавляем ffmpeg в PATH временно
-        ffmpeg_dir = str(BASE_DIR / 'ffmpeg')
-        os.environ['PATH'] = f'{ffmpeg_dir};' + os.environ.get('PATH', '')
+        print(f'[DEBUG] Whisper будет работать с файлом: {audio_path}')
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f'[ERROR] Файл {audio_path} не найден перед обработкой в Whisper!')
 
         if progress_callback:
-            progress_callback(50)  # Начало загрузки модели
+            progress_callback(50)
 
         device = get_best_device()
         print(f'Используем устройство: {device}')
@@ -87,10 +94,15 @@ def transcribe(file_path, model_size='small', progress_callback=None, save_conve
 
         model = whisper.load_model(model_size, device=device, download_root=str(WHISPER_MODELS_DIR))
 
-        if progress_callback:
-            progress_callback(75)  # Модель загружена, начало обработки
+        if torch.__version__ >= '2.0':
+            try:
+                model = torch.compile(model)
+                print('[DEBUG] PyTorch model compiled successfully!')
+            except Exception as e:
+                print(f'[WARNING] Ошибка при компиляции модели: {e}')
 
         result = model.transcribe(audio_path, fp16=(device != 'cpu'))
+
         segments = result.get('segments', [])
 
         dialogue_text = ''
@@ -104,9 +116,8 @@ def transcribe(file_path, model_size='small', progress_callback=None, save_conve
             previous_end = end
 
         if progress_callback:
-            progress_callback(100)  # Готово
+            progress_callback(100)
 
-        # Удаляем временный файл, если галка снята
         if temp_file and not save_converted:
             os.remove(audio_path)
 

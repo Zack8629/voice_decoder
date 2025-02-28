@@ -1,7 +1,8 @@
+import os
 import sys
 from pathlib import Path
 
-APP_VERSION = 'v0.7.0'
+APP_VERSION = 'v0.9.0'
 
 try:
     if getattr(sys, 'frozen', False):  # Запуск из .exe
@@ -25,3 +26,6 @@ except Exception as e:
 # Проверка существования ffmpeg.exe
 if not FFMPEG_PATH.is_file():
     raise FileNotFoundError(f'Не найден ffmpeg: {FFMPEG_PATH}')
+
+ffmpeg_dir = str(Path(FFMPEG_PATH).parent)
+os.environ['PATH'] = f'{ffmpeg_dir};' + os.environ.get('PATH', '')
