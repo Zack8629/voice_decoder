@@ -1,68 +1,13 @@
 import os
-import subprocess
 from pathlib import Path
 
 import torch
 import whisper
 
-from app import FFMPEG_PATH, WHISPER_MODELS_DIR
-
-
-def convert_to_wav(input_path):
-    """Конвертирует аудио- или видеофайл в WAV (PCM 16-bit, 16kHz, mono)"""
-    try:
-        input_path = Path(input_path)
-        output_path = input_path.parent / f'convert_file_{input_path.stem}.wav'
-
-        command = [
-            str(FFMPEG_PATH), '-i', str(input_path),
-            '-ac', '1', '-ar', '16000', '-acodec', 'pcm_s16le',
-            '-threads', '0',
-            '-y', str(output_path)
-        ]
-
-        print(f'[DEBUG] Запуск FFmpeg: {" ".join(command)}')
-
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        if not os.path.exists(output_path):
-            print(f'FFmpeg ошибка: {result.stderr}')
-            raise FileNotFoundError(f'FFmpeg не создал файл: {output_path}')
-
-        return str(output_path)
-
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f'Ошибка при конвертации файла {input_path}: {e}')
-
-
-def get_best_device():
-    """Определяет наиболее эффективное устройство (GPU или CPU)."""
-    try:
-        if torch.cuda.is_available():
-            return 'cuda'
-        elif torch.backends.mps.is_available():  # Apple M1/M2
-            return 'mps'
-        else:
-            if torch.cuda.device_count() > 0:
-                print('[WARNING] Whisper работает на CPU, хотя GPU доступен! Возможно, не установлены драйверы.')
-                return 'cpu (GPU доступен, но не используется!)'
-            return 'cpu'
-
-    except Exception as e:
-        print(f'[WARNING] Ошибка при определении устройства: {e}')
-        return 'cpu'
-
-
-def format_time(seconds):
-    """Форматирует секунды в строку вида 'часы.минуты.секунды'"""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-
-    if hours > 0:
-        return f'[{hours}.{minutes:02}.{secs:02}]'
-    else:
-        return f'[{minutes}.{secs:02}]'
+from app import WHISPER_MODELS_DIR
+from app.convert_to_wav import convert_to_wav
+from app.format_time import format_time
+from app.get_best_device import get_best_device
 
 
 def transcribe(file_path, model_size='small', progress_callback=None, save_converted=True):

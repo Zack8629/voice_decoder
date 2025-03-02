@@ -4,8 +4,9 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QTex
     QMenuBar, QMenu, QLineEdit, QProgressBar, QMessageBox, QCheckBox
 
 from . import APP_VERSION, ICON_PATH
-from .processor import transcribe, get_best_device
+from .get_best_device import get_best_device
 from .time_estimator import estimate_transcription_time
+from .transcribe import transcribe
 
 
 class TranscriptionThread(QThread):

@@ -2,7 +2,7 @@ import os
 import subprocess
 
 from app import FFMPEG_PATH
-from app.processor import get_best_device
+from app.get_best_device import get_best_device
 
 # Параметры моделей: коэффициент скорости + фиксированное время загрузки
 MODEL_PARAMS = {
