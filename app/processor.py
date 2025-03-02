@@ -101,6 +101,9 @@ def transcribe(file_path, model_size='small', progress_callback=None, save_conve
             except Exception as e:
                 print(f'[WARNING] Ошибка при компиляции модели: {e}')
 
+        if progress_callback:
+            progress_callback(75)
+
         result = model.transcribe(audio_path, fp16=(device != 'cpu'))
 
         segments = result.get('segments', [])

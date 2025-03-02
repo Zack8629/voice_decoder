@@ -255,6 +255,8 @@ class WhisperApp(QWidget):
         self.save_checkbox.setEnabled(True)
         self.btn_transcribe.setEnabled(True)
 
+        print(f'display_result Done!')
+
     def show_about(self):
         text_information = (f'Whisper Расшифровка {APP_VERSION}\n'
                             f'Разработчик: Зарихин В. А.')

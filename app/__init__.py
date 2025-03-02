@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-APP_VERSION = 'v0.9.0'
+APP_VERSION = 'v0.9.1'
 
 try:
     if getattr(sys, 'frozen', False):  # Запуск из .exe

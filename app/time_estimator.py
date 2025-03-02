@@ -6,9 +6,9 @@ from app.processor import get_best_device
 
 # Параметры моделей: коэффициент скорости + фиксированное время загрузки
 MODEL_PARAMS = {
-    'small': {'coefficient': 1.0, 'load_time': 5},
-    'medium': {'coefficient': 2.5, 'load_time': 10},
-    'large': {'coefficient': 4.0, 'load_time': 20}
+    'small': {'coefficient': 0.5, 'load_time': 5},
+    'medium': {'coefficient': 1.0, 'load_time': 10},
+    'large': {'coefficient': 2.0, 'load_time': 20}
 }
 
 
